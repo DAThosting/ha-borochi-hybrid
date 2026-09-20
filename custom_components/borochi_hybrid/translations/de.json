@@ -28,7 +28,11 @@
     "step": {
       "init": {
         "data": {
-          "scan_interval": "Abfrageintervall (Sekunden)"
+          "scan_interval": "Abfrageintervall (Sekunden)",
+          "grid_invert": "Vorzeichen der Netzleistung umkehren"
+        },
+        "data_description": {
+          "grid_invert": "Standard: negativ = Einspeisung. Aktivieren, falls dein Wechselrichter es umgekehrt liefert."
         }
       }
     }

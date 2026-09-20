@@ -28,7 +28,11 @@
     "step": {
       "init": {
         "data": {
-          "scan_interval": "Polling interval (seconds)"
+          "scan_interval": "Polling interval (seconds)",
+          "grid_invert": "Invert sign of grid power"
+        },
+        "data_description": {
+          "grid_invert": "Default: negative = feed-in. Enable if your inverter reports it the other way round."
         }
       }
     }

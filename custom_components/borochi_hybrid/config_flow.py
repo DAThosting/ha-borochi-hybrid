@@ -9,6 +9,7 @@ from homeassistant.core import callback
 
 from .const import (
     CONF_BAUDRATE,
+    CONF_GRID_INVERT,
     CONF_PORT,
     CONF_SCAN_INTERVAL,
     CONF_SLAVE,
@@ -81,7 +82,11 @@ class BorochiOptionsFlow(OptionsFlow):
                 {
                     vol.Required(CONF_SCAN_INTERVAL, default=current): vol.All(
                         vol.Coerce(int), vol.Range(min=10, max=3600)
-                    )
+                    ),
+                    vol.Required(
+                        CONF_GRID_INVERT,
+                        default=self.config_entry.options.get(CONF_GRID_INVERT, False),
+                    ): bool,
                 }
             ),
         )

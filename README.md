@@ -67,6 +67,43 @@ Adapter aus- und wieder einstecken und danach `dmesg | tail` ausführen. Dort st
 
 **Hinweis:** Zwei baugleiche Adapter (z. B. zwei CH340) haben oft denselben by-id-Namen ohne Seriennummer. Stecke in diesem Fall nur den Adapter für den Wechselrichter an.
 
+## Docker: USB-Adapter an Home Assistant durchreichen
+
+Läuft Home Assistant in Docker (Container-Installation), sieht der Container den Adapter nur, wenn du ihn ausdrücklich durchreichst. Am zuverlässigsten ist es, den stabilen by-id-Pfad des Hosts auf einen festen Namen im Container abzubilden.
+
+**docker compose** (`docker-compose.yml`):
+```yaml
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    devices:
+      - /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0:/dev/ttyUSB0
+```
+
+**docker run:**
+```bash
+docker run -d --name homeassistant \
+  --device /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0:/dev/ttyUSB0 \
+  ... ghcr.io/home-assistant/home-assistant:stable
+```
+
+Übernehmen und prüfen:
+```bash
+docker compose up -d          # Container mit neuer Konfiguration neu erstellen
+docker exec homeassistant ls -l /dev/ttyUSB0
+```
+Steht dort ein Eintrag, ist der Adapter im Container sichtbar.
+
+In der Integration trägst du dann als **Serieller Port** `/dev/ttyUSB0` ein (den Namen im Container, nicht den Pfad vom Host).
+
+**Hinweise**
+- Den Pfad `usb-1a86_USB_Serial-if00-port0` durch deinen eigenen by-id-Namen ersetzen (siehe Abschnitt oben).
+- Der Adapter darf nur von einem Container oder Programm gleichzeitig genutzt werden. Andere Container oder Add-ons mit demselben Adapter vorher stoppen.
+- Nach dem Ändern der `devices`-Zeile reicht ein Neustart nicht, der Container muss neu erstellt werden (`docker compose up -d`).
+- Läuft der Container nicht als root, muss der Benutzer Zugriff auf das Gerät haben. Bei Bedarf in der Compose-Datei `group_add: ["dialout"]` ergänzen.
+- **Portainer:** Beim Container unter *Runtime & Resources → Devices* den Host-Pfad und den Container-Pfad eintragen.
+- **VM (Proxmox, VirtualBox usw.):** Den USB-Adapter zuerst in der VM-Einstellung an die virtuelle Maschine durchreichen. Danach den Pfad dort wie oben ermitteln.
+
 ## Sensoren
 
 Status: ✅ bestätigt (mit App verglichen) · 🧪 experimentell (Kandidat, standardmäßig deaktiviert)

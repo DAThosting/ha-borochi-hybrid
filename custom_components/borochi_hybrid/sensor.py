@@ -27,13 +27,15 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import BorochiConfigEntry
-from .const import DOMAIN
+from .const import CONF_GRID_INVERT, DOMAIN
 from .coordinator import BorochiCoordinator
 from .decoders import (
     cell_delta,
     cell_max,
     cell_min,
+    int32,
     pv_power,
+    pv_total,
     scaled,
     temp_max,
     temp_min,
@@ -50,6 +52,7 @@ DIAG = EntityCategory.DIAGNOSTIC
 @dataclass(frozen=True, kw_only=True)
 class BorochiSensorDescription(SensorEntityDescription):
     value_fn: Callable[[dict[int, int | None]], Any]
+    grid_kind: str | None = None  # power | import | export
 
 
 def _num(key, name, fn, unit, dc=None, prec=1, **kw) -> BorochiSensorDescription:
@@ -69,6 +72,20 @@ def _exp(key, name, fn, unit, dc=None, prec=1) -> BorochiSensorDescription:
     """Experimentell: standardmäßig deaktiviert."""
     return _num(
         key, f"{name} (experimentell)", fn, unit, dc, prec,
+        entity_registry_enabled_default=False,
+    )
+
+
+def _grid(key, name, kind) -> BorochiSensorDescription:
+    return BorochiSensorDescription(
+        key=key,
+        name=f"{name} (experimentell)",
+        value_fn=int32(725),
+        grid_kind=kind,
+        native_unit_of_measurement=UnitOfPower.WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=MEAS,
+        suggested_display_precision=0,
         entity_registry_enabled_default=False,
     )
 
@@ -100,12 +117,27 @@ SENSORS: tuple[BorochiSensorDescription, ...] = (
     # ---- PV ----
     _num("pv1_voltage", "PV1 Spannung", scaled(208, 0.1), V, VOLT_DC),
     _num("pv2_voltage", "PV2 Spannung", scaled(206, 0.1), V, VOLT_DC),
-    _exp("pv1_current", "PV1 Strom", scaled(223, 0.01), A, CURR_DC, 2),
-    _exp("pv2_current", "PV2 Strom", scaled(225, 0.01), A, CURR_DC, 2),
-    _exp("pv1_power", "PV1 Leistung", pv_power(208, 223), UnitOfPower.WATT,
+    _num("pv1_current", "PV1 Strom", scaled(223, 0.01), A, CURR_DC, 2),
+    _num("pv2_current", "PV2 Strom", scaled(225, 0.01), A, CURR_DC, 2),
+    _num("pv1_power", "PV1 Leistung", pv_power(208, 223), UnitOfPower.WATT,
          SensorDeviceClass.POWER, 0),
-    _exp("pv2_power", "PV2 Leistung", pv_power(206, 225), UnitOfPower.WATT,
+    _num("pv2_power", "PV2 Leistung", pv_power(206, 225), UnitOfPower.WATT,
          SensorDeviceClass.POWER, 0),
+    _num("pv_total_power", "PV Gesamtleistung",
+         pv_total(((208, 223), (206, 225))), UnitOfPower.WATT,
+         SensorDeviceClass.POWER, 0),
+    # ---- Netzleistung (experimentell): Register 725/726, 32 Bit ----
+    # Konvention in HA: positiv = Netzbezug, negativ = Einspeisung.
+    # Falls das Vorzeichen bei dir umgekehrt ist: Option "Vorzeichen umkehren".
+    _grid("grid_power", "Netzleistung", "power"),
+    _grid("grid_export", "Einspeisung", "export"),
+    _grid("grid_import", "Netzbezug", "import"),
+    _exp("power_cand_a", "Leistung Kandidat A (Reg 272)", int32(272),
+         UnitOfPower.WATT, SensorDeviceClass.POWER, 0),
+    _exp("power_cand_b", "Leistung Kandidat B (Reg 274)", int32(274),
+         UnitOfPower.WATT, SensorDeviceClass.POWER, 0),
+    _exp("power_cand_c", "Leistung Kandidat C (Reg 276)", int32(276),
+         UnitOfPower.WATT, SensorDeviceClass.POWER, 0),
     # ---- Batterie ----
     _num("battery_voltage", "Batteriespannung", scaled(529, 0.1), V, VOLT_DC),
     _num("battery_soc", "Batterie SOC", scaled(533, 0.1), PERCENTAGE,
@@ -155,6 +187,7 @@ class BorochiSensor(CoordinatorEntity[BorochiCoordinator], SensorEntity):
         super().__init__(coordinator)
         self.entity_description = description
         self._uid = entry.unique_id or entry.entry_id
+        self._invert = entry.options.get(CONF_GRID_INVERT, False)
         self._attr_unique_id = f"{self._uid}_{description.key}"
 
     @property
@@ -171,4 +204,14 @@ class BorochiSensor(CoordinatorEntity[BorochiCoordinator], SensorEntity):
 
     @property
     def native_value(self):
-        return self.entity_description.value_fn(self.coordinator.data or {})
+        value = self.entity_description.value_fn(self.coordinator.data or {})
+        kind = self.entity_description.grid_kind
+        if kind is None or value is None:
+            return value
+        if self._invert:
+            value = -value
+        if kind == "import":
+            return max(value, 0)
+        if kind == "export":
+            return max(-value, 0)
+        return value

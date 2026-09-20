@@ -22,6 +22,36 @@ def scaled(address: int, scale: float = 1.0, signed: bool = False) -> Fn:
     return fn
 
 
+def int32(address: int, scale: float = 1.0) -> Callable[[Regs], float | None]:
+    """32-Bit vorzeichenbehaftet, High-Word zuerst."""
+
+    def fn(d: Regs) -> float | None:
+        hi, lo = d.get(address), d.get(address + 1)
+        if hi is None or lo is None:
+            return None
+        v = (hi << 16) | lo
+        if v >= 0x80000000:
+            v -= 0x100000000
+        return round(v * scale, 4)
+
+    return fn
+
+
+def pv_total(pairs: tuple[tuple[int, int], ...]) -> Callable[[Regs], float | None]:
+    """Summe der PV-Leistungen aus (Spannungs-, Strom-)Registerpaaren."""
+
+    def fn(d: Regs) -> float | None:
+        total = 0.0
+        for ua, ia in pairs:
+            u, i = d.get(ua), d.get(ia)
+            if u is None or i is None:
+                return None
+            total += u * 0.1 * i * 0.01
+        return round(total, 1)
+
+    return fn
+
+
 def text(lo: int, hi: int) -> Callable[[Regs], str | None]:
     """ASCII-Text, 2 Zeichen pro Register (Ende exklusiv)."""
 
