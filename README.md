@@ -46,6 +46,27 @@ Ordner `custom_components/borochi_hybrid` nach `/config/custom_components/` kopi
 
 Das Abfrageintervall (Standard 30 s) lässt sich unter *Konfigurieren* ändern. Zellwerte, Versionen und Seriennummer werden nur alle 10 Minuten gelesen, weil die Leitung langsam ist.
 
+## Name der USB-Schnittstelle herausfinden
+
+Nutze möglichst den stabilen Pfad unter `/dev/serial/by-id/`. Anders als `/dev/ttyUSB0` ändert er sich nicht, wenn du den Adapter an einen anderen USB-Port steckst oder neu startest.
+
+**Home Assistant OS / Supervised**
+1. *Einstellungen → System → Hardware → Alle Hardware anzeigen*
+2. Den Eintrag des USB-Serial-Adapters suchen (z. B. „USB Serial“ oder „CH340“) und den Pfad unter `/dev/serial/by-id/…` kopieren.
+
+**Per Terminal/SSH**
+```bash
+ls -l /dev/serial/by-id/
+```
+Beispielausgabe: usb-1a86_USB_Serial-if00-port0 -> ../../ttyUSB0
+
+Als Port trägst du dann `/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0` ein.
+
+**Bleibt die Ausgabe leer?**
+Adapter aus- und wieder einstecken und danach `dmesg | tail` ausführen. Dort steht, ob der Adapter erkannt wurde und unter welchem Namen (z. B. `ttyUSB0`). Ist er nicht zu sehen, prüfe Kabel und USB-Port.
+
+**Hinweis:** Zwei baugleiche Adapter (z. B. zwei CH340) haben oft denselben by-id-Namen ohne Seriennummer. Stecke in diesem Fall nur den Adapter für den Wechselrichter an.
+
 ## Sensoren
 
 Status: ✅ bestätigt (mit App verglichen) · 🧪 experimentell (Kandidat, standardmäßig deaktiviert)
