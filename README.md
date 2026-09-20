@@ -1,7 +1,7 @@
 # Borochi Hybrid Wechselrichter für Home Assistant (Modbus RTU)
 
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
-[![Validate](https://github.com/DEIN-GITHUB-USER/ha-borochi-hybrid/actions/workflows/validate.yaml/badge.svg)](https://github.com/DEIN-GITHUB-USER/ha-borochi-hybrid/actions/workflows/validate.yaml)
+[![Validate](https://github.com/DAThosting/ha-borochi-hybrid/actions/workflows/validate.yaml/badge.svg)](https://github.com/DAThosting/ha-borochi-hybrid/actions/workflows/validate.yaml)
 
 Inoffizielle Integration für die dreiphasigen Hochvolt-Hybridwechselrichter **Borochi BHW-8/10/12/15** (BRH008/010/012/015KH-B1) über die RS485-Schnittstelle (Modbus RTU). Lokal, ohne Cloud.
 
@@ -28,7 +28,7 @@ Der serielle Port kann nur von **einem** Programm genutzt werden. Eine bestehend
 ### Über HACS (Custom Repository)
 
 1. HACS → ⋮ (oben rechts) → **Benutzerdefinierte Repositories**
-2. URL `https://github.com/DEIN-GITHUB-USER/ha-borochi-hybrid`, Kategorie **Integration**
+2. URL `https://github.com/DAThosting/ha-borochi-hybrid`, Kategorie **Integration**
 3. „Borochi Hybrid Wechselrichter“ installieren, Home Assistant neu starten
 4. *Einstellungen → Geräte & Dienste → Integration hinzufügen → Borochi*
 
