@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Borochi Hybridwechselrichter (Modbus RTU)",
+        "description": "Verbinde einen USB-RS485-Adapter mit dem COM-Stecker des Wechselrichters (Pin 7 = A, Pin 8 = B). Der Port darf nicht von einer anderen Modbus-Konfiguration belegt sein. Diese Integration ist eine Beta und liest nur.",
+        "data": {
+          "port": "Serieller Port",
+          "slave": "Modbus-Adresse",
+          "baudrate": "Baudrate"
+        },
+        "data_description": {
+          "port": "Am besten den stabilen Pfad unter /dev/serial/by-id/ verwenden.",
+          "slave": "Werkseinstellung des Wechselrichters ist 1.",
+          "baudrate": "Getestet mit 9600 (8N1)."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Keine Antwort. Port belegt? Adresse, Baudrate und A/B-Verdrahtung prüfen.",
+      "unknown_device": "Das Gerät antwortet, ist aber kein erkannter Borochi-Wechselrichter."
+    },
+    "abort": {
+      "already_configured": "Dieser Wechselrichter ist bereits eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Abfrageintervall (Sekunden)"
+        }
+      }
+    }
+  }
+}

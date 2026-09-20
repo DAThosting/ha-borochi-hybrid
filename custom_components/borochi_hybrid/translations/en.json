@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Borochi hybrid inverter (Modbus RTU)",
+        "description": "Connect a USB-RS485 adapter to the inverter's COM connector (pin 7 = A, pin 8 = B). The port must not be used by another Modbus configuration. This integration is a beta and read-only.",
+        "data": {
+          "port": "Serial port",
+          "slave": "Modbus address",
+          "baudrate": "Baud rate"
+        },
+        "data_description": {
+          "port": "Preferably use the stable path under /dev/serial/by-id/.",
+          "slave": "Factory default of the inverter is 1.",
+          "baudrate": "Tested with 9600 (8N1)."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No response. Port in use? Check address, baud rate and A/B wiring.",
+      "unknown_device": "The device responds but is not a recognised Borochi inverter."
+    },
+    "abort": {
+      "already_configured": "This inverter is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Polling interval (seconds)"
+        }
+      }
+    }
+  }
+}
