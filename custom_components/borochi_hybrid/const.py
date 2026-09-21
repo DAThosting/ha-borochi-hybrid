@@ -19,11 +19,10 @@ SLOW_INTERVAL = 600
 # Input-Register (0-basierte Protokolladressen), Ende exklusiv.
 # Nur kleine Blöcke lesen: das Gerät ist bei 9600 Baud empfindlich.
 FAST_BLOCKS: list[tuple[int, int]] = [
-    (206, 209),  # PV2 Spannung (206), PV1 Spannung (208)
-    (223, 226),  # PV-Ströme (Kandidaten)
+    (221, 226),  # PV: Gesamtleistung, U1, I1, U2, I2
     (262, 278),  # Netz + Leistungs-Kandidaten 272-277
     (529, 539),  # Batterie
-    (570, 571),  # Batteriestrom (Kandidat)
+    (570, 571),  # Hausverbrauch (Kandidat)
     (725, 727),  # Netzleistung gesamt (32 Bit, Kandidat)
 ]
 SLOW_BLOCKS: list[tuple[int, int]] = [

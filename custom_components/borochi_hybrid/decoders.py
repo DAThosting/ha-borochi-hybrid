@@ -52,6 +52,16 @@ def pv_total(pairs: tuple[tuple[int, int], ...]) -> Callable[[Regs], float | Non
     return fn
 
 
+def pv_sum(a: int, b: int) -> Callable[[Regs], float | None]:
+    """Summe zweier Leistungsregister (W)."""
+
+    def fn(d: Regs) -> float | None:
+        x, y = d.get(a), d.get(b)
+        return None if x is None or y is None else float(x + y)
+
+    return fn
+
+
 def text(lo: int, hi: int) -> Callable[[Regs], str | None]:
     """ASCII-Text, 2 Zeichen pro Register (Ende exklusiv)."""
 
