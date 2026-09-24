@@ -6,13 +6,13 @@
 Inoffizielle Integration für die dreiphasigen Hochvolt-Hybridwechselrichter **Borochi BHW-8/10/12/15** (BRH008/010/012/015KH-B1) über die RS485-Schnittstelle (Modbus RTU). Lokal, ohne Cloud.
 
 > ## ⚠️ Beta – in Arbeit
-> Borochi veröffentlicht **keine Modbus-Registerliste**. Alle Register wurden durch Scannen und Abgleich mit der Borochi-App ermittelt. Deshalb gilt:
+> Borochi veröffentlicht keine öffentliche Modbus-Registerliste. Alle Register wurden durch Scannen des Geräts und Abgleich der Werte mit der Borochi-App ermittelt. Deshalb gilt:
 >
-> - **Nicht alle Werte sind erfasst.** Es fehlen z. B. gesicherte Netz-/Hausleistung, Batterieleistung und Energiezähler (kWh).
-> - Einige Zuordnungen sind **experimentell** (in der Tabelle markiert). Diese Sensoren sind standardmäßig **deaktiviert** und tragen „(experimentell)“ im Namen.
+> - Ab Version 0.3.0 sind die zentralen Werte (PV, Netz, Haus, Batterie, Energiezähler, Status) mit hoher Zuversicht zugeordnet und rechnerisch gegengeprüft (z. B. PV-Spannung × Strom ergibt die gemeldete PV-Leistung). Einzelne Details (Fehler-/Warncodes, EPS-Werte) fehlen noch oder sind als „experimentell“ markiert.
 > - Entwickelt und getestet nur mit **BRH015KH-B1** (BHW-15). Andere Modelle: bitte melden, ob es funktioniert.
 > - Die Integration **liest nur** und schreibt nie ins Gerät.
 > - Nutzung auf eigene Gefahr. Dieses Projekt steht in keiner Verbindung zu Borochi.
+> - Register-Zuordnungen können sich in künftigen Versionen noch ändern, wenn sich neue Erkenntnisse ergeben – bitte nach einem Update die Energie-Dashboard-Zuordnung und eigene Automationen kurz prüfen.
 
 ## Voraussetzungen
 
@@ -22,6 +22,30 @@ Inoffizielle Integration für die dreiphasigen Hochvolt-Hybridwechselrichter **B
 - Serielle Verbindung: **9600 Baud, 8N1**
 
 Der serielle Port kann nur von **einem** Programm genutzt werden. Eine bestehende `modbus:`-YAML-Konfiguration oder andere Add-ons mit demselben Adapter vorher entfernen oder deaktivieren.
+
+### Name der USB-Schnittstelle herausfinden
+
+Nutze möglichst den stabilen Pfad unter `/dev/serial/by-id/`. Anders als `/dev/ttyUSB0` ändert er sich nicht, wenn du den Adapter an einen anderen USB-Port steckst oder neu startest.
+
+```bash
+ls -l /dev/serial/by-id/
+```
+Beispiel: `usb-1a86_USB_Serial-if00-port0 -> ../../ttyUSB0`. Als Port trägst du dann `/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0` ein.
+
+Erscheint nichts: Adapter aus- und wieder einstecken, danach `dmesg | tail` prüfen.
+
+### Docker: USB-Adapter durchreichen
+
+Läuft Home Assistant in Docker, muss der Adapter dem Container über `devices` durchgereicht werden:
+
+```yaml
+services:
+  homeassistant:
+    devices:
+      - /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0:/dev/ttyUSB0
+```
+
+Als **Serieller Port** trägst du in der Integration dann `/dev/ttyUSB0` ein (den Namen im Container). Nach Ändern der `devices`-Zeile muss der Container neu erstellt werden (`docker compose up -d`), ein Neustart reicht nicht. Der Adapter darf nur von einem Container/Programm gleichzeitig genutzt werden.
 
 ## Installation
 
@@ -44,50 +68,64 @@ Ordner `custom_components/borochi_hybrid` nach `/config/custom_components/` kopi
 | Modbus-Adresse | Standard `1` |
 | Baudrate | Standard `9600` |
 
-Das Abfrageintervall (Standard 30 s) und das Vorzeichen der Netzleistung lassen sich unter *Konfigurieren* ändern. Standard ist HA-Konvention: positiv = Netzbezug, negativ = Einspeisung. Die experimentellen Sensoren sind zunächst deaktiviert und müssen unter *Einstellungen → Geräte & Dienste → Entitäten* aktiviert werden. Zellwerte, Versionen und Seriennummer werden nur alle 10 Minuten gelesen, weil die Leitung langsam ist.
+Unter *Konfigurieren* lassen sich das Abfrageintervall (Standard 30 s) und „Vorzeichen der Netzleistung umkehren“ einstellen. Standardmäßig gilt: **positiv = Netzbezug, negativ = Einspeisung** (Home-Assistant-Konvention). Die Option ist für den Fall gedacht, dass die Zählerverdrahtung bei dir umgekehrt ist.
 
 ## Sensoren
 
-Status: ✅ bestätigt (mit App verglichen) · 🧪 experimentell (Kandidat, standardmäßig deaktiviert)
+Als „🧪 experimentell“ markierte Sensoren sind standardmäßig **deaktiviert** (unter *Einstellungen → Geräte & Dienste → Entitäten* aktivierbar), weil Bedeutung oder Vorzeichen noch nicht mit Messwerten abgeglichen sind.
 
-| Gruppe | Sensor | Register (Input) | Status |
-|---|---|---|---|
-| Netz | Spannung L1/L2/L3 | 262/264/266 (×0,1 V) | ✅ |
-| Netz | Strom L1/L2/L3 | 263/265/267 (×0,1 A) | ✅ |
-| Netz | Spannung L1-L2/L2-L3/L3-L1 | 268–270 (×0,1 V) | ✅ |
-| Netz | Frequenz | 271 (×0,01 Hz) | ✅ |
-| PV | Gesamtleistung | 221 (W) | ✅ |
-| PV | PV1 / PV2 Spannung | 222 / 224 (×0,1 V) | ✅ |
-| PV | PV1 / PV2 Strom | 223 / 225 (×0,01 A) | ✅ |
-| PV | PV1 / PV2 Leistung | berechnet U·I | ✅ |
-| Netz | Netzleistung, Einspeisung, Netzbezug | 725/726 (32 Bit, negativ = Einspeisung) | 🧪 |
-| Haus | Hausverbrauch | 570 (W) | 🧪 |
-| AC | AC-Leistung Wechselrichter | 276/277 (32 Bit, W) | 🧪 |
-| Batterie | Spannung | 529 (×0,1 V) | ✅ |
-| Batterie | SOC | 533 (×0,1 %) | ✅ |
-| Batterie | SOH | 534 (×0,1 %) | ✅ |
-| Batterie | Zyklen | 535 | ✅ |
-| Batterie | Temperatur | 536 (×0,1 °C) | ✅ |
-| Batterie | Kapazität | 1905 (×0,1 kWh) | ✅ |
-| Batterie | BMS-Temperatur | 538 (×0,1 °C) | 🧪 |
-| Batterie | Ladestrom, Ladeleistung | 530 (×0,1 A), 532 (W) | 🧪 |
-| Zellen | Min/Max/Spreizung (128 Zellen) | 2300–2427 (mV) | ✅ |
-| Zellen | Temperatur min/max | 2428–2445 (×0,1 °C) | ✅ |
-| Info | Modell, Seriennummer | 0–5, 16–23 (ASCII) | ✅ |
-| Info | Firmware Haupt-ARM/Hilfs-ARM/Haupt-DSP | 66 / 68 / 70 (gepackt) | ✅ |
-| Info | Nennleistung | 61 (W) | ✅ |
+### PV
+| Sensor | Register | Format |
+|---|---|---|
+| PV Gesamtleistung | 220-221 | 32 Bit, W |
+| PV1/PV2 Spannung | 222 / 224 | ×0,1 V |
+| PV1/PV2 Strom | 223 / 225 | ×0,01 A |
+| PV1/PV2 Leistung | berechnet U·I | W |
+| PV Ertrag heute/gesamt | 501-502 / 503-504 | 32 Bit, ×0,1 kWh |
+
+### Netz
+| Sensor | Register | Format |
+|---|---|---|
+| Netzleistung, Einspeisung, Netzbezug | 274-275 | 32 Bit, ×1 W (+ = Bezug, − = Einspeisung) |
+| Netzspannung/-strom L1-L3 | 262-267 | ×0,1 V / ×0,1 A |
+| Netzfrequenz | 271 | ×0,01 Hz |
+| Netzbezug/Einspeisung Energie (Zähler) | 729-730 / 731-732 | 32 Bit, ×0,01 kWh |
+| Netzbezug Energie heute/gesamt (Wechselrichter) | 505-506 / 507-508 | 32 Bit, ×0,1 kWh |
+| Netz Blindleistung, Scheinleistung, Leistungsfaktor | 272-273, 276-277, 278 | Diagnose |
+
+### Haus
+| Sensor | Register | Format |
+|---|---|---|
+| Hausverbrauch | 569-570 | 32 Bit, W |
+| Hausverbrauch Energie heute/gesamt | 571-572 / 573-574 | 32 Bit, ×0,1 kWh |
+
+### Batterie
+| Sensor | Register | Format |
+|---|---|---|
+| Spannung, Strom, Leistung | 529 / 530 / 531-532 | ×0,1 V, ×0,1 A, W; + = Laden, − = Entladen |
+| SOC, SOH, Zyklen | 533 / 534 / 535 | ×0,1 % / ×0,1 % / Anzahl |
+| Temperatur, BMS-Temperatur | 536 / 538 | ×0,1 °C |
+| Zellspannung min/max/Spreizung | 565 / 564 / berechnet | ×0,001 V |
+| Lade-/Entladeenergie heute/gesamt | 544-551 | 32 Bit, ×0,1 kWh |
+| Kapazität, Seriennummer, BMS-Version | 1905, 1908-1923, 1906-1907 | Diagnose |
+
+### Wechselrichter / Status
+| Sensor | Register | Format |
+|---|---|---|
+| Status, Betriebsmodus, Fehler-/Warnstatus | 200, 500, 279-290 | Text (siehe unten) |
+| Modell, Seriennummer, Nennleistung, Modbus-Adresse | 0-31, 60-61, 63 | Diagnose |
+| Firmware Haupt-ARM/Hilfs-ARM/Haupt-DSP, Hardware-Version | 66/68/70, 64 | gepackt, z. B. V10.10.020 |
+| Wechselrichter-/Umgebungstemperatur, Zwischenkreisspannung | 210, 211, 215 | Diagnose |
+
+**Fehler-/Warnstatus:** zeigt bei aktivem Fehler die rohen Registerwerte (z. B. `Reg281=0x0004`), noch ohne Klartext-Übersetzung der einzelnen Bits.
 
 ### Noch offen
+- Klartext-Übersetzung der Fehler-/Warncodes
+- EPS-Werte (Notstrom/Inselbetrieb)
+- Zeitplan-Einstellungen (Lade-/Entladefenster) als Sensoren
+- Bestätigung an weiteren Modellen (8/10/12 kW)
 
-- Netz- und Hausleistung sicher zuordnen (die Kandidaten 725/726 und 570 widersprechen sich in einzelnen Messungen)
-- Batterie-Entladung und Vorzeichen der Batterieleistung
-- Energiezähler-Kandidat: 731/732 (32 Bit, vermutlich ×0,01 kWh), noch nicht zugeordnet
-- Energiezähler (Tages- und Gesamtenergie) für das Energie-Dashboard
-- Betriebsstatus und Fehlercodes
-- BMS-Version, Batterie-Seriennummer, Wallbox
-- Steuerung (Betriebsmodus etc.): bewusst noch nicht vorgesehen
-
-Bis Energiezähler vorhanden sind, kannst du aus einem Leistungssensor mit dem Helfer **Integral-Sensor (Riemann-Summe)** einen kWh-Wert für das Energie-Dashboard erzeugen.
+Die vollständige Liste der 128 Einzel-Zellspannungen wird aus Effizienzgründen (langsame RS485-Verbindung) nicht mehr ausgelesen – stattdessen liefert das Gerät Min/Max direkt.
 
 ## Fehlersuche
 
@@ -102,7 +140,7 @@ Bis Energiezähler vorhanden sind, kannst du aus einem Leistungssensor mit dem H
 
 ## Mithelfen
 
-Am meisten helfen **Registerdaten mit passenden App-Werten** vom gleichen Zeitpunkt (Register, Rohwert, App-Wert), besonders für andere Modelle (8/10/12 kW), Netz-/Hausleistung und Energiezähler. Bitte ein Issue mit der Vorlage „Fehler / Registerdaten melden“ öffnen.
+Am meisten helfen **Registerdaten mit passenden App-Werten** vom gleichen Zeitpunkt (Register, Rohwert, App-Wert), besonders für andere Modelle (8/10/12 kW) sowie EPS-Werte und Fehlercodes. Bitte ein Issue mit der Vorlage „Fehler / Registerdaten melden“ öffnen.
 
 ⚠️ **Seriennummern (Wechselrichter, Batterie, Datenlogger) vor dem Posten entfernen.**
 
